@@ -1,6 +1,6 @@
 import machine
 import utime
-import constants
+import time
 
 class Buzzer():
     def __init__(self, pin):
@@ -25,17 +25,23 @@ class Buzzer():
         pause_duration_ms = 100
         # define the number of beeps
         beep_count = 1
-        if(type == constants.ALARM_SUCCESS):
+        if(type == 1):
             print("sounding alarm")
             alarm_frequency = 100
             beep_duration_ms = 200 
             pause_duration_ms = 100
             beep_count = 3
-        elif(type == constants.ALARM_ERROR):
+        elif(type == 2):
             alarm_frequency = 100
             beep_duration_ms = 500 
             pause_duration_ms = 100
             beep_count = 1
+        elif(type == 3):
+            print("processing tone")
+            alarm_frequency = 800  # Higher frequency for processing
+            beep_duration_ms = 150 
+            pause_duration_ms = 50
+            beep_count = 2  # Two quick beeps
 
         # Play the alarm sound with three beeps
         for _ in range(beep_count):
@@ -44,3 +50,4 @@ class Buzzer():
 
         # Cleanup the PWM
         self.buzzer_pwm.deinit()
+

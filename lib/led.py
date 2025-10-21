@@ -1,4 +1,5 @@
 from machine import Pin, Timer
+import time
 
 class Led():
     def __init__(self, pin):
@@ -12,8 +13,8 @@ class Led():
     def turn_off(self):
         self.led.value(False)
         
-    def blink(self, frequency=2.5):
-        self.timer.init(freq=frequency, mode=Timer.PERIODIC, callback=self._blink_helper)
+    def blink(self, duration):
+        self.timer.init(freq=2.5, mode=Timer.PERIODIC, callback=self._blink_helper)
 
     def stop_blinking(self):
         self.timer.deinit()
@@ -21,3 +22,4 @@ class Led():
 
     def _blink_helper(self, timer):
         self.led.toggle()
+

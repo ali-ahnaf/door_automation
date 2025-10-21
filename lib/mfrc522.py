@@ -1,6 +1,7 @@
-from machine import Pin, SPI
 from os import uname
- 
+import utime
+from machine import Pin, SPI
+
  
 class MFRC522:
  
@@ -378,4 +379,3 @@ class MFRC522:
             print("Authentication error")
             return self.ERR
         return self.OK
-
