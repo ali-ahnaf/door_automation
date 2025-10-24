@@ -2,6 +2,21 @@
 
 A comprehensive RFID-based door lock system for Raspberry Pi Pico with motor control, user management, and security features.
 
+## Uploading files to pico
+
+```
+pip install mpremote
+
+# uploads everything at once from current dir to pico
+mpremote cp -r . :/
+
+# list files
+mpremote ls
+
+# remove file
+mpremote rm my_old_file.py
+```
+
 ## Features
 
 - **RFID Authentication**: Secure access using MFRC522 RFID reader
