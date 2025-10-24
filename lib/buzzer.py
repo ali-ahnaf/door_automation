@@ -1,6 +1,5 @@
 import machine
 import utime
-import time
 
 class Buzzer():
     def __init__(self, pin):

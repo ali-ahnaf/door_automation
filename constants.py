@@ -12,6 +12,10 @@ PIN_BUZZER = 14
 
 PIN_LED = 28
 
+# Button pins
+PIN_BUTTON_FORWARD = 20  # Button to rotate motor forward
+PIN_BUTTON_BACKWARD = 21  # Button to rotate motor backward
+
 # Timing settings
 MOTOR_UNLOCK_TIME = 6.0  # seconds to unlock door
 MOTOR_LOCK_TIME = 6.0    # seconds to lock door

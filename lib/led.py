@@ -1,5 +1,4 @@
 from machine import Pin, Timer
-import time
 
 class Led():
     def __init__(self, pin):

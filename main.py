@@ -3,6 +3,7 @@ from lib.mfrc522 import MFRC522
 from lib.buzzer import Buzzer
 from lib.led import Led
 from lib.motor import Motor
+from lib.button import Button
 import constants as c
 from db import get_user
 
@@ -11,6 +12,8 @@ rfid = MFRC522(spi_id=0, sck=c.PIN_RFID_SCK, miso=c.PIN_RFID_MISO, mosi=c.PIN_RF
 motor = Motor(c.PIN_MOTOR_IN1, c.PIN_MOTOR_IN2)
 buzzer = Buzzer(c.PIN_BUZZER)
 led = Led(c.PIN_LED)
+button_forward = Button(c.PIN_BUTTON_FORWARD)
+button_backward = Button(c.PIN_BUTTON_BACKWARD)
 
 def main():
     print("Simple Door Lock System Starting...")
@@ -32,12 +35,18 @@ def main():
             # Auto-lock door if time expired
             if not door_locked and current_time >= door_unlock_until:
                 print("Auto-locking door...")
-                motor.backward(c.MOTOR_LOCK_TIME)
+
+                motor.backward()
+                utime.sleep(c.MOTOR_LOCK_TIME)
+                motor.stop()
+
                 door_locked = True
                 buzzer.alert(c.BUZZER_ERROR)  # Lock beep
                 led.turn_off()  # Turn off LED when locked
                 led.stop_blinking()  # Stop any current blinking
                 print("Door locked")
+
+                utime.sleep(5)
             
             # Check if enough time has passed since last scan
             if current_time - last_scan_time >= scan_cooldown:
@@ -65,7 +74,12 @@ def main():
                             if door_locked:
                                 print("Unlocking door...")
                                 led.blink(c.DOOR_OPEN_TIME)
-                                motor.forward(c.MOTOR_UNLOCK_TIME)
+
+                                motor.forward()
+                                utime.sleep(c.MOTOR_UNLOCK_TIME)
+                                motor.stop()
+
+                                current_time = utime.time()
                                 door_locked = False
                                 door_unlock_until = current_time + c.DOOR_OPEN_TIME
                                 buzzer.alert(c.BUZZER_SUCCESS)  # Success beep
@@ -77,10 +91,24 @@ def main():
                             print(f"Access denied: Card {card_id} not authorized")
                             buzzer.alert(c.BUZZER_ERROR)  # Error beep
                             led.blink(2.0)  # Error blink for 2 seconds
-                            utime.sleep_ms(2000)  # Wait for blink to complete
+                            utime.sleep(2)  # Wait for blink to complete
                             led.stop_blinking()  # Stop the error blink
                     
                     utime.sleep_ms(500)  # Prevent multiple reads
+            
+            # Check manual motor control buttons
+            if button_forward.is_held():
+                print("Manual forward button held - rotating motor forward")
+                motor.forward()
+                led.blink(2)
+            elif button_backward.is_held():
+                print("Manual backward button held - rotating motor backward")
+                motor.backward()
+                led.blink(2)
+            else:
+                # Stop motor if no buttons are pressed
+                motor.stop()
+                led.stop_blinking()
             
             utime.sleep_ms(100)  # Small delay
             
