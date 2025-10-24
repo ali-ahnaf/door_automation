@@ -84,6 +84,7 @@ def main():
                                 door_unlock_until = current_time + c.DOOR_OPEN_TIME
                                 buzzer.alert(c.BUZZER_SUCCESS)  # Success beep
                                 print("Door unlocked")
+                                buzzer.ring(c.DOOR_OPEN_TIME)
                             else:
                                 print("Door already unlocked")
                                 buzzer.alert(c.BUZZER_SUCCESS)

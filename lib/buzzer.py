@@ -50,3 +50,9 @@ class Buzzer():
         # Cleanup the PWM
         self.buzzer_pwm.deinit()
 
+    def ring(self, duration):
+        """Rings the buzzer at max volume for the given duration (in seconds)."""
+        self.buzzer_pwm.freq(2000)        # Set frequency (2 kHz = clear tone)
+        self.buzzer_pwm.duty_u16(65535)   # Max volume (100% duty cycle)
+        utime.sleep(duration)             # Keep buzzer on for given duration
+        self.buzzer_pwm.duty_u16(0)       # Turn buzzer off
