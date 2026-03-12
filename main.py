@@ -1,126 +1,100 @@
-import utime
-from lib.mfrc522 import MFRC522
+import machine
+import time
+import utime as timex
+from machine import I2C, Pin
+
+from lib.lcd import LCD
+from lib.keypad import Keypad
+from lib.servo import Servo
 from lib.buzzer import Buzzer
-from lib.led import Led
-from lib.motor import Motor
-from lib.button import Button
-import constants as c
-from db import get_user
+from db import get_user, USERS
 
-# Initialize components
-rfid = MFRC522(spi_id=0, sck=c.PIN_RFID_SCK, miso=c.PIN_RFID_MISO, mosi=c.PIN_RFID_MOSI, cs=c.PIN_RFID_CS, rst=c.PIN_RFID_RST)
-motor = Motor(c.PIN_MOTOR_IN1, c.PIN_MOTOR_IN2)
-buzzer = Buzzer(c.PIN_BUZZER)
-led = Led(c.PIN_LED)
-button_forward = Button(c.PIN_BUTTON_FORWARD)
-button_backward = Button(c.PIN_BUTTON_BACKWARD)
+# buzzer
+buzzer = Buzzer()
 
-def main():
-    print("Simple Door Lock System Starting...")
-    
-    # System state
-    door_locked = True
-    door_unlock_until = 0
-    last_scan_time = 0
-    scan_cooldown = 10  # 10 seconds cooldown between scans
-    
-    print("System ready! Bring RFID card close to reader.")
-    buzzer.alert(c.BUZZER_SUCCESS)  # Startup beep
-    led.turn_on()    # Ready indicator
-    
+# initialize i2c bus
+i2c = machine.I2C(1, scl=Pin(27), sda=Pin(26), freq=100000)
+
+# keypad
+keypad = Keypad(i2c)
+last_key = None
+pin = ""
+
+# lcd
+lcd=LCD(i2c)
+lcd.clear()
+greeting='Enter PIN'
+lcd.write(greeting)
+
+# servo
+servo = Servo(0)
+servo.move(0, 1) # start at angle 0
+
+wrong_pin_delay = 2000
+
+def reset():
+    buzzer.value(0)
+    pin = ""
+    lcd.clear()
+    lcd.write("App crashed. Restarting")
+    servo.move(0, 2)
+    lcd.write(greeting)
+
+wrong_attempts = 0
+while True:
     try:
-        while True:
-            current_time = utime.time()
-            
-            # Auto-lock door if time expired
-            if not door_locked and current_time >= door_unlock_until:
-                print("Auto-locking door...")
+        key = keypad.scan()
 
-                motor.backward()
-                utime.sleep(c.MOTOR_LOCK_TIME)
-                motor.stop()
+        if key and key != last_key:
+            print("Pressed:", key)
+            buzzer.beep()
+            last_key = key
 
-                door_locked = True
-                buzzer.alert(c.BUZZER_ERROR)  # Lock beep
-                led.turn_off()  # Turn off LED when locked
-                led.stop_blinking()  # Stop any current blinking
-                print("Door locked")
-
-                utime.sleep(5)
-            
-            # Check if enough time has passed since last scan
-            if current_time - last_scan_time >= scan_cooldown:
-                # Try to read RFID card
-                rfid.init()
-                (stat, tag_type) = rfid.request(rfid.REQIDL)
+            # If D is pressed → submit
+            if key == 'D':
+                print("Submit pin :", pin)
+                lcd.clear()
+                if pin:
+                    user = get_user(pin)
+                    if user:
+                        lcd.write("Access granted: " + user['name'])
+                        servo.move(180, 2) # open locker by moving servo 180 degree
+                        lcd.clear()
+                        print(f"Access granted for {user['name']} in flat {user['flat']}.")
+                    else:
+                        lcd.write("Invalid PIN. Wait " + wrong_pin_delay + "ms")
+                        time.sleep_ms(wrong_pin_delay)
+                        wrong_attempts += 1
+                        print("Invalid PIN. Access denied.")                        
                 
-                if stat == rfid.OK:
-                    (stat, uid) = rfid.SelectTagSN()
-                    
-                    if stat == rfid.OK:
-                        # Get card ID
-                        card_id = int.from_bytes(bytes(uid), "little", False)
-                        print(f"Card detected: {card_id}")
-                        
-                        # Update last scan time
-                        last_scan_time = current_time
-                        
-                        # Check if user is authorized
-                        user = get_user(card_id)
-                        if user:
-                            print(f"Access granted: {user['name']} (Flat: {user['flat']})")
-                            
-                            # Unlock door
-                            if door_locked:
-                                print("Unlocking door...")
-                                led.blink(c.DOOR_OPEN_TIME)
+                if wrong_attempts > 2:
+                    lcd.clear()
+                    lcd.write("Locked for 5m")
+                    time.sleep_ms(5*1000*60)
 
-                                motor.forward()
-                                utime.sleep(c.MOTOR_UNLOCK_TIME)
-                                motor.stop()
+                lcd.clear()
+                pin = ""   # reset
+                lcd.write(greeting)
+            elif key == 'C':   # Backspace   
+                pin = ""             
+                lcd.clear()
+                lcd.write(greeting)
+            # If it is a keypad character → add to pin
+            elif key in ['0','1','2','3','4','5','6','7','8','9','A','B']:
+                pin += key
+                
+                # show pin on LCD
+                lcd.clear()
+                # lcd.write(pin)
+                # hide pin
+                lcd.write("*" * len(pin))
 
-                                current_time = utime.time()
-                                door_locked = False
-                                door_unlock_until = current_time + c.DOOR_OPEN_TIME
-                                buzzer.alert(c.BUZZER_SUCCESS)  # Success beep
-                                print("Door unlocked")
-                                buzzer.ring(c.DOOR_OPEN_TIME)
-                            else:
-                                print("Door already unlocked")
-                                buzzer.alert(c.BUZZER_SUCCESS)
-                        else:
-                            print(f"Access denied: Card {card_id} not authorized")
-                            buzzer.alert(c.BUZZER_ERROR)  # Error beep
-                            led.blink(2.0)  # Error blink for 2 seconds
-                            utime.sleep(2)  # Wait for blink to complete
-                            led.stop_blinking()  # Stop the error blink
-                    
-                    utime.sleep_ms(500)  # Prevent multiple reads
-            
-            # Check manual motor control buttons
-            if button_forward.is_held():
-                print("Manual forward button held - rotating motor forward")
-                motor.forward()
-                led.blink(2)
-            elif button_backward.is_held():
-                print("Manual backward button held - rotating motor backward")
-                motor.backward()
-                led.blink(2)
-            else:
-                # Stop motor if no buttons are pressed
-                motor.stop()
-                led.stop_blinking()
-            
-            utime.sleep_ms(100)  # Small delay
-            
-    except KeyboardInterrupt:
-        print("\nSystem stopped by user")
-        motor.stop()
-        led.turn_off()
+        if not key:
+            last_key = None
+
+        time.sleep_ms(50)
+
     except Exception as e:
-        print(f"System error: {str(e)}")
-        motor.stop()
-        led.turn_off()
+        print("Error:", e)
+        reset()
 
-if __name__ == "__main__":
-    main()
