@@ -33,7 +33,7 @@ servo.move(0, 1) # start at angle 0
 wrong_pin_delay = 2000
 
 def reset():
-    buzzer.value(0)
+    buzzer.reset()
     pin = ""
     lcd.clear()
     lcd.write("App crashed. Restarting")

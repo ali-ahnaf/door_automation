@@ -16,6 +16,9 @@ class Buzzer:
         for _ in range(3):
             self.beep(0.1)
             time.sleep(0.05)
+            
+    def reset(self):
+        self.buzzer.value(0)
 
     def wrong_pin_alarm(self):
         # Long-short-long pattern
