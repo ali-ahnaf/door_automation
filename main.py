@@ -33,20 +33,25 @@ servo.move(0, 1) # start at angle 0
 wrong_pin_delay = 2000
 
 def reset():
+    global pin, wrong_attempts, last_key
     buzzer.reset()
     pin = ""
     lcd.clear()
-    lcd.write("App crashed. Restarting")
+    lcd.write("Restarting")
     servo.move(0, 2)
+    lcd.clear()
     lcd.write(greeting)
+    wrong_attempts = 0
+    last_key = None
 
 wrong_attempts = 0
+
 while True:
     try:
         key = keypad.scan()
 
         if key and key != last_key:
-            print("Pressed:", key)
+            #print("Pressed:", key)
             buzzer.beep()
             last_key = key
 
@@ -60,10 +65,14 @@ while True:
                         lcd.write("Access granted: " + user['name'])
                         servo.move(180, 2) # open locker by moving servo 180 degree
                         lcd.clear()
+                        lcd.write("Door open. Push")
                         print(f"Access granted for {user['name']} in flat {user['flat']}.")
+                        time.sleep_ms(10000) # wait for 10s then lock the door
+                        servo.move(0, 2) # open locker by moving servo 180 degree
+                        wrong_attempts = 0
                     else:
-                        lcd.write("Invalid PIN. Wait " + wrong_pin_delay + "ms")
-                        time.sleep_ms(wrong_pin_delay)
+                        lcd.write("Invalid PIN. Wait 2s")
+                        time.sleep_ms(2000)
                         wrong_attempts += 1
                         print("Invalid PIN. Access denied.")                        
                 
@@ -71,18 +80,18 @@ while True:
                     lcd.clear()
                     lcd.write("Locked for 5m")
                     time.sleep_ms(5*1000*60)
+                    wrong_attempts = 0
 
                 lcd.clear()
                 pin = ""   # reset
                 lcd.write(greeting)
-            elif key == 'C':   # Backspace   
+            elif key == 'C': # Backspace   
                 pin = ""             
                 lcd.clear()
                 lcd.write(greeting)
             # If it is a keypad character → add to pin
             elif key in ['0','1','2','3','4','5','6','7','8','9','A','B']:
                 pin += key
-                
                 # show pin on LCD
                 lcd.clear()
                 # lcd.write(pin)
@@ -97,4 +106,3 @@ while True:
     except Exception as e:
         print("Error:", e)
         reset()
-
